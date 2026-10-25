@@ -4,6 +4,9 @@
 > backoffice + backoffice-bff, sampledata, and common-library. Removed: search, recommendation, webhook, delivery,
 > the Kafka / Elasticsearch / observability stacks, Kubernetes and test automation. `openapi/` holds the specs the
 > running services publish. How the lab runs these services: [BoB-15th-SADE/sade-poc-lab](https://github.com/BoB-15th-SADE/sade-poc-lab).
+> One source fix: payment's Liquibase data changesets 0001/0002 inserted into `payment_provider.is_enabled`, which
+> ddl changeset 0004 had already renamed to `enabled`, so payment failed on an empty DB. They now use `enabled`
+> (the lab mounts the same files into the published payment image: sade-poc-lab `host3/payment-liquibase/`).
 > Upstream: [nashtech-garage/yas](https://github.com/nashtech-garage/yas) (`main` of this fork stays equal to it).
 
 # YAS: Yet Another Shop
