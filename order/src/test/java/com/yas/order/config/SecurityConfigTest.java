@@ -14,9 +14,11 @@ import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpHeaders;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -25,7 +27,8 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @WebMvcTest(OrderController.class)
-@Import({SecurityConfig.class, SecurityConfigTest.PublicStorefrontController.class})
+@Import({SecurityConfig.class, SecurityConfigTest.TestSecurityConfiguration.class,
+        SecurityConfigTest.PublicStorefrontController.class})
 class SecurityConfigTest {
 
     @Autowired
@@ -74,6 +77,11 @@ class SecurityConfigTest {
                 .andExpect(content().string("public"));
 
         verifyNoInteractions(orderService);
+    }
+
+    @TestConfiguration(proxyBeanMethods = false)
+    @EnableWebSecurity
+    static class TestSecurityConfiguration {
     }
 
     @RestController
