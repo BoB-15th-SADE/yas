@@ -1,4 +1,0 @@
-backoffice:
-  url: http://backoffice/
-  username: admin
-  password: password

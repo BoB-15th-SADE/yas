@@ -1,3 +1,11 @@
+> **Branch `sade-poc` (BoB-15th-SADE): SADE PoC lab version.**
+> Only the services the lab runs are kept: product, media, customer, cart, rating, order, payment (+ the
+> payment-paypal library it uses), promotion, tax, inventory, location, storefront + storefront-bff,
+> backoffice + backoffice-bff, sampledata, and common-library. Removed: search, recommendation, webhook, delivery,
+> the Kafka / Elasticsearch / observability stacks, Kubernetes and test automation. `openapi/` holds the specs the
+> running services publish. How the lab runs these services: [BoB-15th-SADE/sade-poc-lab](https://github.com/BoB-15th-SADE/sade-poc-lab).
+> Upstream: [nashtech-garage/yas](https://github.com/nashtech-garage/yas) (`main` of this fork stays equal to it).
+
 # YAS: Yet Another Shop
 
 YAS is a pet project aim to practice building a typical microservice application in Java

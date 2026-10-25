@@ -442,68 +442,6 @@ services:
       - ./deployment/app-config:/app-config
     networks:
       - yas-network
-  # webhook:
-  #   build: ./webhook
-  #   image: ghcr.io/nashtech-garage/yas-webhook:latest
-  #   environment:
-  #     - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/webhook
-  #     - SERVER_SERVLET_CONTEXT_PATH=/webhook
-  #     - YAS_PUBLIC_URL=${YAS_PUBLIC_API_URL}/webhook
-  #     - YAS_SERVICES_LOCATION
-  #     - SERVER_PORT
-  #     - LOGGING_CONFIG
-  #     - JAVA_TOOL_OPTIONS
-  #     - OTEL_EXPORTER_OTLP_ENDPOINT
-  #     - OTEL_EXPORTER_OTLP_PROTOCOL
-  #     - OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE
-  #     - OTEL_RESOURCE_ATTRIBUTES
-  #     - OTEL_SERVICE_NAME=webhook-service
-  #     - OTEL_LOGS_EXPORTER
-  #     - OTEL_TRACES_EXPORTER
-  #     - OTEL_METRICS_EXPORTER
-  #     - OTEL_INSTRUMENTATION_LOGBACK-MDC_ADD-BAGGAGE
-  #     - OTEL_JAVAAGENT_LOGGING
-  #     - OTEL_JAVAAGENT_ENABLED
-  #     - OTEL_JAVAAGENT_DEBUG
-  #   volumes:
-  #     - ./docker/libs/opentelemetry-javaagent.jar:/opentelemetry-javaagent.jar
-  #     - ./deployment/app-config:/app-config
-  #   networks:
-  #     - yas-network
-  # recommendation:
-  #   build: ./recommendation
-  #   image: ghcr.io/nashtech-garage/yas-recommendation:latest
-  #   ports:
-  #     - '9791:9791'
-  #   environment:
-  #     - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/recommendation
-  #     - SERVER_SERVLET_CONTEXT_PATH=/recommendation
-  #     - YAS_PUBLIC_URL=${YAS_PUBLIC_API_URL}/recommendation
-  #     - YAS_SERVICES_PRODUCT
-  #     - SERVER_PORT
-  #     - LOGGING_CONFIG
-  #     - JAVA_TOOL_OPTIONS
-  #     - OTEL_EXPORTER_OTLP_ENDPOINT
-  #     - OTEL_EXPORTER_OTLP_PROTOCOL
-  #     - OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE
-  #     - OTEL_RESOURCE_ATTRIBUTES
-  #     - OTEL_SERVICE_NAME=recommendation-service
-  #     - OTEL_LOGS_EXPORTER
-  #     - OTEL_TRACES_EXPORTER
-  #     - OTEL_METRICS_EXPORTER
-  #     - OTEL_INSTRUMENTATION_LOGBACK-MDC_ADD-BAGGAGE
-  #     - OTEL_JAVAAGENT_LOGGING
-  #     - OTEL_JAVAAGENT_ENABLED
-  #     - OTEL_JAVAAGENT_DEBUG
-  #     # OpenAI Config
-  #     - SPRING_AI_AZURE_OPENAI_API_KEY
-  #     - SPRING_AI_AZURE_OPENAI_ENDPOINT
-  #     - SPRING_AI_AZURE_OPENAI_EMBEDDING_OPTIONS_MODEL
-  #   volumes:
-  #     - ./docker/libs/opentelemetry-javaagent.jar:/opentelemetry-javaagent.jar
-  #     - ./deployment/app-config:/app-config
-  #   networks:
-  #     - yas-network
   swagger-ui:
     image: swaggerapi/swagger-ui:v5.17.14
     environment:
@@ -529,69 +467,6 @@ services:
       - POSTGRES_PASSWORD
     networks:
       - yas-network
-  pgadmin:
-    image: dpage/pgadmin4:2024-10-19-2
-    volumes:
-      - pgadmin:/var/lib/pgadmin
-    environment:
-      PGADMIN_DEFAULT_EMAIL: admin@yas.com
-      PGADMIN_DEFAULT_PASSWORD: admin
-    networks:
-      - yas-network
-  zookeeper:
-    image: debezium/zookeeper:2.7.3.Final
-    restart: always
-    ports:
-      - 2181:2181
-      - 2888:2888
-      - 3888:3888
-    networks:
-      - yas-network
-  kafka:
-    image: confluentinc/cp-kafka:7.7.1
-    hostname: ${KAFKA_SERVICE_HOST}
-    depends_on:
-      - zookeeper
-    ports:
-      - ${KAFKA_SERVICE_PORT}:${KAFKA_SERVICE_PORT}
-      - 29092:29092
-    environment:
-      - KAFKA_BROKER_ID
-      - KAFKA_ZOOKEEPER_CONNECT
-      - KAFKA_ADVERTISED_LISTENERS
-      - KAFKA_LISTENER_SECURITY_PROTOCOL_MAP
-      - KAFKA_INTER_BROKER_LISTENER_NAME
-      - KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR
-    networks:
-      - yas-network
-  kafka-connect:
-    image: debezium/connect:2.7.3.Final
-    restart: always
-    ports:
-      - 8083:8083
-      - 5005:5005
-    depends_on:
-      - kafka
-    environment:
-      - BOOTSTRAP_SERVERS=kafka:9092
-      - GROUP_ID=1
-      - CONFIG_STORAGE_TOPIC=kafka_connect_configs
-      - OFFSET_STORAGE_TOPIC=kafka_connect_offsets
-    networks:
-      - yas-network
-  kafka-ui:
-    container_name: kafka-ui
-    image: provectuslabs/kafka-ui:latest
-    environment:
-      DYNAMIC_CONFIG_ENABLED: 'true'
-      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
-    ports:
-      - 8089:8080
-    depends_on:
-      - kafka
-      - kafka-connect
-    networks:
-      - yas-network
   redis:
     image: redis:7.4.1-alpine
     restart: always
@@ -612,5 +487,4 @@ networks:
 
 volumes:
   postgres:
-  pgadmin:
   redis:
