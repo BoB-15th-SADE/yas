@@ -57,6 +57,11 @@ def compare_maps(a, b, prefix=''):
             res['only_in_build'].append(prefix + name)
         elif a[name] == b[name]:
             res['identical'] += 1
+        elif name.endswith(('classpath.idx', 'layers.idx')) and sorted(a[name].splitlines()) == sorted(b[name].splitlines()):
+            # same list of jars, written in another order (Maven's resolution order); reported, not a code difference
+            res.setdefault('order_only', []).append(prefix + name)
+            if name.endswith('classpath.idx'):
+                res['classpath_order'] = [l.decode() for l in a[name].splitlines()], [l.decode() for l in b[name].splitlines()]
         elif name.endswith('.class') and javap(a[name]) == javap(b[name]):
             res['code_equal'].append(prefix + name)
         else:
@@ -99,10 +104,18 @@ def main(service, image_jar, built_jar, report_path):
     result['same_code'] = not diffs
     result['differences'] = diffs
     Path(report_path).write_text(json.dumps(result, indent=2, ensure_ascii=False))
+    order_only = result['app'].get('order_only', [])
     print(f"{service}: {'SAME CODE' if not diffs else 'DIFFERENT'} | app identical {result['app']['identical']}, "
-          f"code-equal {len(result['app']['code_equal'])}, differences {len(diffs)}")
+          f"code-equal {len(result['app']['code_equal'])}, order-only {len(order_only)}, differences {len(diffs)}, "
+          f"libs identical {result['libs']['identical']}")
     for d in diffs[:20]:
-        print('   ', d)
+        print('    DIFF', d)
+    for d in order_only:
+        print('    ORDER-ONLY', d)
+    if 'classpath_order' in result['app']:
+        img, built = result['app'].pop('classpath_order')
+        moved = [(i, l, built.index(l)) for i, l in enumerate(img) if built.index(l) != i]
+        print(f'    classpath.idx: {len(img)} jars, {len(moved)} at another position; first: {moved[:3]}')
 
 
 if __name__ == '__main__':
