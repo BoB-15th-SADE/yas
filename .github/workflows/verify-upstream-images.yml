@@ -1,0 +1,57 @@
+# Check that the published YAS images the SADE PoC lab runs contain the same code as this branch.
+# For each service: take /app.jar out of the pinned image, build the same service from this branch, and compare
+# their classes, resources and libraries (.github/scripts/compare_jars.py). Run by hand (Actions -> Run workflow).
+# order and payment are compared too: they should differ only where this branch fixed them.
+name: verify-upstream-images
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  compare:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {service: product,        image: "ghcr.io/nashtech-garage/yas-product@sha256:d9866d8917091fac9e000db907d0026fe3aee50e70eed0d72ecb361f1aa50a38"}
+          - {service: media,          image: "ghcr.io/nashtech-garage/yas-media@sha256:36c9997f44737e515663cb7d69010505cfbd9331d8d020733579d234e4e0f630"}
+          - {service: customer,       image: "ghcr.io/nashtech-garage/yas-customer@sha256:2e26f0f2803eb3461eb7ed5cd6e433d1e8c79e7033b9fbc0fe2a44082cf94e76"}
+          - {service: cart,           image: "ghcr.io/nashtech-garage/yas-cart@sha256:16b351fd919079fbd2a1e22ab1190772c684302cb9f0c907800ebcaa01039329"}
+          - {service: rating,         image: "ghcr.io/nashtech-garage/yas-rating@sha256:8dba030376411eda55dbfe34c516b74e550f8559bde963fb7769f836da24427e"}
+          - {service: promotion,      image: "ghcr.io/nashtech-garage/yas-promotion@sha256:1dbd40d5d5aa342c5e861e000398b888a5850e8a2fdd9a99fdb94749311faba3"}
+          - {service: tax,            image: "ghcr.io/nashtech-garage/yas-tax@sha256:b1aa55041fab49f0eb2560567d0f3f07e38d126cb5be397e806db12d9de29e75"}
+          - {service: inventory,      image: "ghcr.io/nashtech-garage/yas-inventory@sha256:0c4e2aaceceaabf685316ca72cb6e9c1a5d92e6f0a8e91e1ed23de1d12226ed2"}
+          - {service: location,       image: "ghcr.io/nashtech-garage/yas-location@sha256:cd4e7d1f3f9b8e558f2b56331dc48ce464ef25db4c32d8658e6d4ed53ddf8f44"}
+          - {service: storefront-bff, image: "ghcr.io/nashtech-garage/yas-storefront-bff@sha256:b320e530e5daf04a13497c3ca7fe759e6561efbfae19044d3fb240fd67b137de"}
+          - {service: backoffice-bff, image: "ghcr.io/nashtech-garage/yas-backoffice-bff@sha256:2e6f8886de6e618dff070f8c6403f393e05775ceb0bec6d5f542fe0471413d57"}
+          - {service: sampledata,     image: "ghcr.io/nashtech-garage/yas-sampledata@sha256:efcc6b2d11551bbf3539308bff4963c7df2c013f70f49b1752ed8abaea252fa1"}
+          - {service: order,          image: "ghcr.io/nashtech-garage/yas-order@sha256:51b83c4abe42f9bccd6926112a78b1e7edfa8b145d95afc3f7925fda46eefc85"}
+          - {service: payment,        image: "ghcr.io/nashtech-garage/yas-payment@sha256:1091ece053106670fcaf37ffff3b01ebcb05af3e09fa0c9275eb9e1ead4d4770"}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '25'
+          distribution: temurin
+          cache: maven
+      - name: Build ${{ matrix.service }} from this branch
+        run: mvn -B -ntp clean package -DskipTests -pl ${{ matrix.service }} -am
+      - name: Take /app.jar out of the published image
+        run: |
+          docker pull "${{ matrix.image }}"
+          id=$(docker create "${{ matrix.image }}")
+          docker cp "$id:/app.jar" image.jar
+          docker rm "$id" >/dev/null
+          ls -la image.jar ${{ matrix.service }}/target/*.jar
+      - name: Compare
+        run: |
+          built=$(ls ${{ matrix.service }}/target/*.jar | grep -v -- '-plain.jar' | head -1)
+          python3 .github/scripts/compare_jars.py "${{ matrix.service }}" image.jar "$built" "report-${{ matrix.service }}.json"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: report-${{ matrix.service }}
+          path: report-${{ matrix.service }}.json
