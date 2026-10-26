@@ -1,3 +1,6 @@
+server:
+  forward-headers-strategy: framework
+
 spring:
   cloud:
     gateway:
@@ -5,6 +8,9 @@ spring:
         webflux:
           default-filters:
             - SaveSession
+            # ForwardedHeaderTransformer consumes XFF for HTTPS/login processing.
+            # The private nginx entry overwrites X-Real-IP before reaching this BFF.
+            - MapRequestHeader=X-Real-IP, X-Forwarded-For
           routes:
             - id: api
               uri: http://nginx
