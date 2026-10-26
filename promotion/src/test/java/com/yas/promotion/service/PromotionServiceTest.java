@@ -14,13 +14,12 @@ import com.yas.promotion.model.enumeration.DiscountType;
 import com.yas.promotion.model.enumeration.UsageType;
 import com.yas.promotion.repository.PromotionRepository;
 import com.yas.promotion.utils.Constants;
-import com.yas.promotion.viewmodel.ProductVm;
+import com.yas.promotion.viewmodel.StorefrontProductVm;
 import com.yas.promotion.viewmodel.PromotionDetailVm;
 import com.yas.promotion.viewmodel.PromotionListVm;
 import com.yas.promotion.viewmodel.PromotionPostVm;
 import com.yas.promotion.viewmodel.PromotionVerifyVm;
 import java.time.Instant;
-import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.Date;
 import java.util.List;
@@ -108,8 +107,8 @@ class PromotionServiceTest {
             .build();
 
         var promotionApply3 = PromotionApply.builder()
-            .promotion(promotion2)
-            .productId(1L).build();
+            .promotion(promotion3)
+            .categoryId(1L).build();
         promotion3.setPromotionApplies(List.of(promotionApply3));
 
         promotionRepository.save(promotion3);
@@ -272,7 +271,7 @@ class PromotionServiceTest {
     @Test
     void testVerifyPromotion_ProductNotFound() {
         var promotionVerifyVm = new PromotionVerifyVm("code2", 1000L, List.of(1L,2L,3L));
-        Mockito.when(productService.getProductByCategoryIds(ArgumentMatchers.anyList())).thenReturn(List.of());
+        Mockito.when(productService.getStorefrontProductsByIds(ArgumentMatchers.anyList())).thenReturn(List.of());
 
         // Expect a NotFoundException due to no products found for promotion
         NotFoundException exception = assertThrows(NotFoundException.class, () -> {
@@ -289,7 +288,7 @@ class PromotionServiceTest {
             1000000L,
             List.of(1L, 2L, 3L)
         );
-        Mockito.when(productService.getProductByBrandIds(ArgumentMatchers.anyList()))
+        Mockito.when(productService.getStorefrontProductsByIds(ArgumentMatchers.anyList()))
             .thenReturn(createProductVms());
         var result = promotionService.verifyPromotion(promotionVerifyData);
 
@@ -306,7 +305,7 @@ class PromotionServiceTest {
             1000000L,
             List.of(1L, 2L, 3L)
         );
-        Mockito.when(productService.getProductByIds(ArgumentMatchers.anyList()))
+        Mockito.when(productService.getStorefrontProductsByIds(ArgumentMatchers.anyList()))
             .thenReturn(createProductVms());
         var result = promotionService.verifyPromotion(promotionVerifyData);
 
@@ -323,7 +322,7 @@ class PromotionServiceTest {
             1000000L,
             List.of(1L, 2L, 3L)
         );
-        Mockito.when(productService.getProductByCategoryIds(ArgumentMatchers.anyList()))
+        Mockito.when(productService.getStorefrontProductsByIds(ArgumentMatchers.anyList()))
             .thenReturn(createProductVms());
         var result = promotionService.verifyPromotion(promotionVerifyData);
 
@@ -333,20 +332,10 @@ class PromotionServiceTest {
         assertEquals(200L, result.discountValue().longValue());
     }
 
-    private List<ProductVm> createProductVms() {
+    private List<StorefrontProductVm> createProductVms() {
         return List.of(
-            new ProductVm(
-                1L,
-                "Product 01",
-                "product-01",
-                true,
-                true,
-                false,
-                true,
-                10000000.0,
-                ZonedDateTime.now(),
-                2L
-            )
+            new StorefrontProductVm(1L, 10000000.0, true, true, 1L,
+                    List.of(new StorefrontProductVm.CategoryRef(1L)))
         );
     }
 }
