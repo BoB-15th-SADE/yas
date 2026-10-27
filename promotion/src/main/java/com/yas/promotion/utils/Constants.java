@@ -14,6 +14,7 @@ public class Constants {
         public static final String ACCESS_DENIED = "ACCESS_DENIED";
         public static final String INVALID_MINIMUM_ORDER_PURCHASE_AMOUNT = "INVALID_MINIMUM_ORDER_PURCHASE_AMOUNT";
         public static final String PRODUCT_NOT_FOUND_TO_APPLY_PROMOTION = "PRODUCT_NOT_FOUND_TO_APPLY_PROMOTION";
+        public static final String INVALID_PRODUCT_IDS = "INVALID_PRODUCT_IDS";
     }
 
     public final class Pageable {

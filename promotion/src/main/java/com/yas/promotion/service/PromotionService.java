@@ -15,6 +15,7 @@ import com.yas.promotion.utils.Constants;
 import com.yas.promotion.viewmodel.BrandVm;
 import com.yas.promotion.viewmodel.CategoryGetVm;
 import com.yas.promotion.viewmodel.ProductVm;
+import com.yas.promotion.viewmodel.StorefrontProductVm;
 import com.yas.promotion.viewmodel.PromotionDetailVm;
 import com.yas.promotion.viewmodel.PromotionListVm;
 import com.yas.promotion.viewmodel.PromotionPostVm;
@@ -215,21 +216,22 @@ public class PromotionService {
             throw new BadRequestException(Constants.ErrorCode.INVALID_MINIMUM_ORDER_PURCHASE_AMOUNT);
         }
 
-        List<ProductVm> products = getProductsCanApplyPromotion(promotion);
+        List<StorefrontProductVm> products =
+                getProductsCanApplyPromotion(promotion, promotionVerifyData.productIds());
         if (CollectionUtils.isEmpty(products)) {
             throw new NotFoundException(Constants.ErrorCode.PRODUCT_NOT_FOUND_TO_APPLY_PROMOTION);
         }
 
-        List<Long> productInPromotionIds = products.stream().map(ProductVm::id).toList();
+        List<Long> productInPromotionIds = products.stream().map(StorefrontProductVm::id).toList();
         List<Long> commonProductIds = new ArrayList<>(promotionVerifyData.productIds());
         commonProductIds.retainAll(productInPromotionIds);
         if (CollectionUtils.isEmpty(commonProductIds)) {
             throw new NotFoundException(Constants.ErrorCode.PRODUCT_NOT_FOUND_TO_APPLY_PROMOTION);
         }
 
-        List<ProductVm> productsCanApply = products.stream()
+        List<StorefrontProductVm> productsCanApply = products.stream()
                 .filter(product -> commonProductIds.contains(product.id()))
-                .sorted(Comparator.comparing(ProductVm::price)).toList();
+                .sorted(Comparator.comparing(StorefrontProductVm::price)).toList();
 
         return new PromotionVerifyResultDto(true, productsCanApply.getFirst().id(),
                 promotion.getCouponCode(),
@@ -248,30 +250,18 @@ public class PromotionService {
                 && promotion.getUsageLimit() <= promotion.getUsageCount();
     }
 
-    private List<ProductVm> getProductsCanApplyPromotion(Promotion promotion) {
-        switch (promotion.getApplyTo()) {
-            case CATEGORY -> {
-                List<Long> categoryIds = promotion.getPromotionApplies().stream()
-                        .map(PromotionApply::getCategoryId)
-                        .toList();
-                return productService.getProductByCategoryIds(categoryIds);
-            }
-            case BRAND -> {
-                List<Long> brandIds = promotion.getPromotionApplies().stream()
-                        .map(PromotionApply::getBrandId)
-                        .toList();
-                return productService.getProductByBrandIds(brandIds);
-            }
-            case PRODUCT -> {
-                List<Long> productIds = promotion.getPromotionApplies().stream()
-                        .map(PromotionApply::getProductId)
-                        .toList();
-                return productService.getProductByIds(productIds);
-            }
-            default -> {
-                return Collections.emptyList();
-            }
-        }
+    private List<StorefrontProductVm> getProductsCanApplyPromotion(Promotion promotion, List<Long> selectedIds) {
+        List<PromotionApply> applies = Optional.ofNullable(promotion.getPromotionApplies())
+                .orElseGet(Collections::emptyList);
+        return productService.getStorefrontProductsByIds(selectedIds).stream()
+                .filter(product -> applies.stream().anyMatch(apply -> switch (promotion.getApplyTo()) {
+                    case PRODUCT -> product.id().equals(apply.getProductId());
+                    case BRAND -> product.brandId() != null && product.brandId().equals(apply.getBrandId());
+                    case CATEGORY -> product.categories() != null && product.categories().stream()
+                            .anyMatch(category -> category != null && category.id() != null
+                                    && category.id().equals(apply.getCategoryId()));
+                }))
+                .toList();
     }
 
     public void updateUsagePromotion(List<PromotionUsageVm> promotionUsageVms) {

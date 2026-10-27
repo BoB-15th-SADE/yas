@@ -10,7 +10,7 @@ abstract class AbstractCircuitBreakFallbackHandler {
         handleError(ids, throwable);
     }
 
-    protected Object handleFallback(List<Long> ids, Throwable throwable) throws Throwable {
+    protected List<?> handleFallback(List<Long> ids, Throwable throwable) throws Throwable {
         handleError(ids, throwable);
         return null;
     }
