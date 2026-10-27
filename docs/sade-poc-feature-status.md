@@ -34,3 +34,5 @@
 3. 각 빌드 job은 실제 push 결과의 digest와 source_revision을 `image-manifest-<service>` artifact에 기록한다.
 4. `sade-poc-lab`은 성공한 job과 실제 pull 확인 결과의 digest로 compose/images.lock을 갱신한다. 실패·미게시 이미지의 태그나 digest를 추측해 기록하지 않는다.
 5. 이미지 게시, lab 저장소 이미지 지정, 실제 VM 컨테이너 교체를 구분해서 보고한다. 다른 PC 컨테이너를 이 작업만으로 재시작하지 않는다.
+
+게시 이름 참고: 기존 upstream 미러 yas-storefront/promotion/BFF 패키지는 별도의 접근 권한을 사용한다. fork 빌드는 yas-poc-storefront, yas-poc-promotion, yas-poc-storefront-bff, yas-poc-backoffice-bff에 게시하고 order/payment는 기존 repository-owned 이름을 유지한다. 미러 패키지 권한이나 가시성을 임의로 변경하지 않는다.

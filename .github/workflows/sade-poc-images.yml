@@ -1,7 +1,8 @@
 # Build the YAS services this fork changed for the SADE PoC lab, once, and push them to GHCR.
 # Servers only pull and run these images (BoB-15th-SADE/sade-poc-lab pins them by digest).
-#   ghcr.io/bob-15th-sade/yas-<service>:sha-<short>   the exact commit
-#   ghcr.io/bob-15th-sade/yas-<service>:sade-poc      latest build of this branch
+# order/payment keep their existing repository-owned packages.
+# Other fork builds use yas-poc-<service>, separate from the protected upstream mirror packages.
+# Tags: sha-<short> for the exact commit and sade-poc for the branch.
 # Same build as YAS's own CI (JDK 25 temurin, Maven with unit tests, the service's Dockerfile).
 name: sade-poc-images
 
@@ -31,7 +32,17 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        service: [order, payment, promotion, storefront-bff, backoffice-bff]
+        include:
+          - service: order
+            image: yas-order
+          - service: payment
+            image: yas-payment
+          - service: promotion
+            image: yas-poc-promotion
+          - service: storefront-bff
+            image: yas-poc-storefront-bff
+          - service: backoffice-bff
+            image: yas-poc-backoffice-bff
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -50,7 +61,7 @@ jobs:
       - id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/${{ github.repository_owner }}/yas-${{ matrix.service }}
+          images: ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}
           tags: |
             type=sha,format=short
             type=ref,event=branch
@@ -92,7 +103,9 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        service: [storefront]
+        include:
+          - service: storefront
+            image: yas-poc-storefront
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
@@ -104,7 +117,7 @@ jobs:
       - id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/${{ github.repository_owner }}/yas-${{ matrix.service }}
+          images: ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}
           tags: |
             type=sha,format=short
             type=ref,event=branch
