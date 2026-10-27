@@ -12,6 +12,10 @@ on:
       - order/**
       - payment/**
       - payment-paypal/**
+      - promotion/**
+      - storefront/**
+      - storefront-bff/**
+      - backoffice-bff/**
       - common-library/**
       - pom.xml
       - .github/workflows/sade-poc-images.yml
@@ -27,7 +31,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        service: [order, payment]   # services with fixes on this branch; the rest run YAS's published images
+        service: [order, payment, promotion, storefront-bff, backoffice-bff]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -50,10 +54,91 @@ jobs:
           tags: |
             type=sha,format=short
             type=ref,event=branch
-      - uses: docker/build-push-action@v6
+      - id: image
+        uses: docker/build-push-action@v6
         with:
           context: ./${{ matrix.service }}
           platforms: linux/amd64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+      - name: Record immutable image reference
+        env:
+          SERVICE: ${{ matrix.service }}
+          IMAGE_METADATA: ${{ steps.meta.outputs.json }}
+          IMAGE_DIGEST: ${{ steps.image.outputs.digest }}
+          SOURCE_REVISION: ${{ github.sha }}
+        run: |
+          mkdir -p image-manifest
+          python3 - <<'PY'
+          import json, os, pathlib, re
+          metadata = json.loads(os.environ["IMAGE_METADATA"])
+          digest = os.environ["IMAGE_DIGEST"]
+          assert re.fullmatch(r"sha256:[0-9a-f]{64}", digest), digest
+          image = metadata["tags"][0].rsplit(":", 1)[0]
+          manifest = {"service": os.environ["SERVICE"], "image": image,
+                      "digest": digest, "source_revision": os.environ["SOURCE_REVISION"],
+                      "tags": metadata["tags"]}
+          pathlib.Path("image-manifest/image.json").write_text(json.dumps(manifest, indent=2))
+          print(json.dumps(manifest))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: image-manifest-${{ matrix.service }}
+          path: image-manifest/image.json
+          if-no-files-found: error
+
+  frontend:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: [storefront]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/yas-${{ matrix.service }}
+          tags: |
+            type=sha,format=short
+            type=ref,event=branch
+      - id: image
+        uses: docker/build-push-action@v6
+        with:
+          # Dockerfile runs catalog, coupon and React render regression checks, then next build.
+          context: ./storefront
+          platforms: linux/amd64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+      - name: Record immutable image reference
+        env:
+          SERVICE: ${{ matrix.service }}
+          IMAGE_METADATA: ${{ steps.meta.outputs.json }}
+          IMAGE_DIGEST: ${{ steps.image.outputs.digest }}
+          SOURCE_REVISION: ${{ github.sha }}
+        run: |
+          mkdir -p image-manifest
+          python3 - <<'PY'
+          import json, os, pathlib, re
+          metadata = json.loads(os.environ["IMAGE_METADATA"])
+          digest = os.environ["IMAGE_DIGEST"]
+          assert re.fullmatch(r"sha256:[0-9a-f]{64}", digest), digest
+          image = metadata["tags"][0].rsplit(":", 1)[0]
+          manifest = {"service": os.environ["SERVICE"], "image": image,
+                      "digest": digest, "source_revision": os.environ["SOURCE_REVISION"],
+                      "tags": metadata["tags"]}
+          pathlib.Path("image-manifest/image.json").write_text(json.dumps(manifest, indent=2))
+          print(json.dumps(manifest))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: image-manifest-${{ matrix.service }}
+          path: image-manifest/image.json
+          if-no-files-found: error
