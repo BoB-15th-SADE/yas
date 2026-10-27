@@ -1,0 +1,72 @@
+{
+  "source_revision": "1fc261f41a738c2bf166c02e9776249ad3fac59c",
+  "publishing_run": 40439701569,
+  "images": {
+    "storefront": {
+      "service": "storefront",
+      "image": "ghcr.io/bob-15th-sade/yas-poc-storefront",
+      "digest": "sha256:d1498fe42ae7c3b9248165bcf85ec870c538999aa49cbb92ae1c392bfb4428b6",
+      "source_revision": "1fc261f41a738c2bf166c02e9776249ad3fac59c",
+      "tags": [
+        "ghcr.io/bob-15th-sade/yas-poc-storefront:sade-poc",
+        "ghcr.io/bob-15th-sade/yas-poc-storefront:sha-1fc261f"
+      ],
+      "job_id": 121976829078
+    },
+    "storefront-bff": {
+      "service": "storefront-bff",
+      "image": "ghcr.io/bob-15th-sade/yas-poc-storefront-bff",
+      "digest": "sha256:9081a83f65131253f5b4f33f4eb88291d13ef51c2a0c11354e862b2ad38042f1",
+      "source_revision": "1fc261f41a738c2bf166c02e9776249ad3fac59c",
+      "tags": [
+        "ghcr.io/bob-15th-sade/yas-poc-storefront-bff:sade-poc",
+        "ghcr.io/bob-15th-sade/yas-poc-storefront-bff:sha-1fc261f"
+      ],
+      "job_id": 121976829500
+    },
+    "backoffice-bff": {
+      "service": "backoffice-bff",
+      "image": "ghcr.io/bob-15th-sade/yas-poc-backoffice-bff",
+      "digest": "sha256:c091051d8aa715136cee35ac002c3597d25957fec3e704f06287114dcd6a99c0",
+      "source_revision": "1fc261f41a738c2bf166c02e9776249ad3fac59c",
+      "tags": [
+        "ghcr.io/bob-15th-sade/yas-poc-backoffice-bff:sade-poc",
+        "ghcr.io/bob-15th-sade/yas-poc-backoffice-bff:sha-1fc261f"
+      ],
+      "job_id": 121976829390
+    },
+    "order": {
+      "service": "order",
+      "image": "ghcr.io/bob-15th-sade/yas-order",
+      "digest": "sha256:ea04f692c244646f5fb9c83ca0e87d59ea0520df7bf9dd5a9a7237d984969c16",
+      "source_revision": "1fc261f41a738c2bf166c02e9776249ad3fac59c",
+      "tags": [
+        "ghcr.io/bob-15th-sade/yas-order:sade-poc",
+        "ghcr.io/bob-15th-sade/yas-order:sha-1fc261f"
+      ],
+      "job_id": 121976829357
+    },
+    "payment": {
+      "service": "payment",
+      "image": "ghcr.io/bob-15th-sade/yas-payment",
+      "digest": "sha256:92c60be5735d417485cb456391e8748374381af4734468bf4787733b21bf8951",
+      "source_revision": "1fc261f41a738c2bf166c02e9776249ad3fac59c",
+      "tags": [
+        "ghcr.io/bob-15th-sade/yas-payment:sade-poc",
+        "ghcr.io/bob-15th-sade/yas-payment:sha-1fc261f"
+      ],
+      "job_id": 121976829382
+    },
+    "promotion": {
+      "service": "promotion",
+      "image": "ghcr.io/bob-15th-sade/yas-poc-promotion",
+      "digest": "sha256:5f0943ab022f96d6727b8b5585f60f0aa53a12f1c136ff5256b76fbdc5f7b8ca",
+      "source_revision": "1fc261f41a738c2bf166c02e9776249ad3fac59c",
+      "tags": [
+        "ghcr.io/bob-15th-sade/yas-poc-promotion:sade-poc",
+        "ghcr.io/bob-15th-sade/yas-poc-promotion:sha-1fc261f"
+      ],
+      "job_id": 121976829374
+    }
+  }
+}
