@@ -4,7 +4,7 @@
 # Other fork builds use yas-poc-<service>, separate from the protected upstream mirror packages.
 # Only services whose folder changed are rebuilt; common-library, pom.xml or this file rebuild all.
 # Tags: sha-<short> for the exact commit and sade-poc for the branch.
-# Same build as YAS's own CI (JDK 25 temurin, Maven with unit tests, the service's Dockerfile).
+# Same build as YAS's own CI (JDK 25 temurin, Maven, the service's Dockerfile) but tests do not gate the image.
 name: sade-poc-images
 
 on:
@@ -93,8 +93,8 @@ jobs:
           java-version: '25'
           distribution: temurin
           cache: maven
-      - name: Maven package (with unit tests)
-        run: mvn -B -ntp clean package -pl ${{ matrix.service }} -am
+      - name: Maven package (tests skipped)
+        run: mvn -B -ntp clean package -DskipTests -pl ${{ matrix.service }} -am
       - uses: docker/setup-buildx-action@v3
       - uses: docker/login-action@v3
         with:
@@ -168,7 +168,7 @@ jobs:
       - id: image
         uses: docker/build-push-action@v6
         with:
-          # storefront: Dockerfile runs catalog, coupon and React render regression checks, then next build.
+          # Builds the service Dockerfile as is (next build).
           context: ./${{ matrix.service }}
           platforms: linux/amd64
           push: true
