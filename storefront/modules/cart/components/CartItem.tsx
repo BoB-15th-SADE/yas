@@ -4,6 +4,7 @@ import ImageWithFallBack from '@/common/components/ImageWithFallback';
 import { CartItemGetDetailsVm } from '@/modules/cart/models/CartItemGetVm';
 import { formatPrice } from 'utils/formatPrice';
 import { PromotionVerifyResult } from '@/modules/promotion/model/Promotion';
+import { couponDiscount } from '@/modules/promotion/service/CouponResult';
 
 interface CartItemProps {
   item: CartItemGetDetailsVm;
@@ -28,16 +29,7 @@ const calculateProductPrice = (
   item: CartItemGetDetailsVm,
   promotionApply?: PromotionVerifyResult
 ) => {
-  let discount = 0;
-
-  // Check if discountType is 'PERCENTAGE' and calculate accordingly
-  if (promotionApply?.discountType === 'PERCENTAGE') {
-    discount = (item.price * item.quantity * (promotionApply.discountValue ?? 0)) / 100;
-  } else {
-    discount = promotionApply?.discountValue ?? 0;
-  }
-
-  return formatPrice(item.price * item.quantity - discount);
+  return formatPrice(item.price * item.quantity - couponDiscount(item, promotionApply));
 };
 
 const CartItem: FC<CartItemProps> = ({
@@ -97,11 +89,7 @@ const CartItem: FC<CartItemProps> = ({
         )}
 
         <div>
-          {
-            promotionApply?.discountType === 'PERCENTAGE'
-              ? formatPrice(item.price - item.price * (promotionApply.discountValue / 100)) // Calculate percentage discount
-              : formatPrice(item.price - (promotionApply?.discountValue ?? 0)) // Fixed discount
-          }
+          {formatPrice(item.price - couponDiscount(item, promotionApply) / item.quantity)}
         </div>
       </td>
       <td className="cart__quantity">

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { FieldErrorsImpl, UseFormRegister, UseFormSetValue } from 'react-hook-form';
 import { Input } from '../../../common/items/Input';
 import { OptionSelect } from '../../../common/items/OptionSelect';
@@ -6,7 +6,6 @@ import { Address } from '../../../modules/address/models/AddressModel';
 import { Country } from '../../country/models/Country';
 import { District } from '../../district/models/District';
 import { StateOrProvince } from '../../stateAndProvince/models/StateOrProvince';
-import { useRouter } from 'next/router';
 import { getCountries } from '../../country/services/CountryService';
 import { getStatesOrProvinces } from '../../stateAndProvince/services/StatesOrProvicesService';
 import { getDistricts } from '../../district/services/DistrictService';
@@ -19,6 +18,7 @@ type AddressFormProps = {
   address: Address | undefined;
   isDisplay?: boolean | true;
   buttonText?: string;
+  isSubmitting?: boolean;
 };
 
 const AddressForm = ({
@@ -29,50 +29,72 @@ const AddressForm = ({
   isDisplay,
   setValue,
   buttonText,
+  isSubmitting = false,
 }: AddressFormProps) => {
-  const router = useRouter();
-  const { id } = router.query;
-
   const [countries, setCountries] = useState<Country[]>([]);
   const [statesOrProvinces, setStatesOrProvinces] = useState<StateOrProvince[]>([]);
   const [districts, setDistricts] = useState<District[]>([]);
+  const [regionMessage, setRegionMessage] = useState('');
+  const [districtMessage, setDistrictMessage] = useState('');
+  const countryRequest = useRef(0);
+  const stateRequest = useRef(0);
 
   useEffect(() => {
     getCountries().then((data) => {
       setCountries(data);
-    });
+    }).catch(() => setRegionMessage('Unable to load countries. Please try again.'));
   }, []);
 
   useEffect(() => {
-    if (address) {
-      getStatesOrProvinces(address.countryId).then((data) => {
-        setStatesOrProvinces(data);
-      });
-      getDistricts(address.stateOrProvinceId).then((data) => {
-        setDistricts(data);
-      });
-    }
-  }, [id]);
+    if (!address) return;
+    let active = true;
+    Promise.all([getStatesOrProvinces(address.countryId), getDistricts(address.stateOrProvinceId)])
+      .then(([states, areas]) => {
+        if (active) { setStatesOrProvinces(states); setDistricts(areas); }
+      }).catch(() => { if (active) setRegionMessage('Unable to load regions. Please try again.'); });
+    return () => { active = false; };
+  }, [address?.countryId, address?.stateOrProvinceId]);
 
   const onCountryChange = async (event: any) => {
+    const request = ++countryRequest.current;
+    ++stateRequest.current;
+    const countryId = event.target.value;
     setValue('countryName', event.target.selectedOptions[0].text);
-    getStatesOrProvinces(event.target.value).then((data) => {
+    // HTML selects use empty strings although the API Address model uses numeric IDs.
+    setValue('stateOrProvinceId', '' as unknown as number);
+    setValue('districtId', '' as unknown as number);
+    setValue('stateOrProvinceName', '');
+    setValue('districtName', '');
+    setStatesOrProvinces([]);
+    setDistricts([]);
+    setRegionMessage('Loading regions...');
+    setDistrictMessage('Select a state or province first.');
+    try {
+      const data = await getStatesOrProvinces(countryId);
+      if (request !== countryRequest.current) return;
       setStatesOrProvinces(data);
-      getDistricts(event.target.value).then((data) => {
-        if (data) {
-          setDistricts(data);
-        } else {
-          setDistricts([]);
-        }
-      });
-    });
+      setRegionMessage(data.length ? '' : 'No regions are available for this country.');
+    } catch {
+      if (request === countryRequest.current) setRegionMessage('Unable to load regions. Please try again.');
+    }
   };
 
   const onStateOrProvinceChange = async (event: any) => {
+    const request = ++stateRequest.current;
+    const stateId = event.target.value;
     setValue('stateOrProvinceName', event.target.selectedOptions[0].text);
-    getDistricts(event.target.value).then((data) => {
+    setValue('districtId', '' as unknown as number);
+    setValue('districtName', '');
+    setDistricts([]);
+    setDistrictMessage('Loading districts...');
+    try {
+      const data = await getDistricts(stateId);
+      if (request !== stateRequest.current) return;
       setDistricts(data);
-    });
+      setDistrictMessage(data.length ? '' : 'No districts are available for this region.');
+    } catch {
+      if (request === stateRequest.current) setDistrictMessage('Unable to load districts. Please try again.');
+    }
   };
 
   return (
@@ -86,6 +108,7 @@ const AddressForm = ({
                 labelText="Contact name"
                 register={register}
                 field="contactName"
+                error={errors.contactName?.message}
                 registerOptions={{
                   required: { value: true, message: 'This feild is required' },
                 }}
@@ -99,6 +122,7 @@ const AddressForm = ({
                 labelText="Phone number"
                 register={register}
                 field="phone"
+                error={errors.phone?.message}
                 registerOptions={{
                   required: { value: true, message: 'This feild is required' },
                 }}
@@ -132,6 +156,8 @@ const AddressForm = ({
                   labelText="State Or Province"
                   register={register}
                   field="stateOrProvinceId"
+                  error={errors.stateOrProvinceId?.message}
+                  disabled={!statesOrProvinces.length}
                   options={statesOrProvinces}
                   placeholder="Select state or province"
                   defaultValue={address?.stateOrProvinceId}
@@ -140,6 +166,7 @@ const AddressForm = ({
                     onChange: onStateOrProvinceChange,
                   }}
                 />
+                {regionMessage && <p role="status" className="text-muted">{regionMessage}</p>}
               </div>
             </div>
           </div>
@@ -162,6 +189,8 @@ const AddressForm = ({
                 labelText="District"
                 register={register}
                 field="districtId"
+                error={errors.districtId?.message}
+                disabled={!districts.length}
                 options={districts}
                 placeholder="Select district"
                 defaultValue={address?.districtId}
@@ -172,6 +201,7 @@ const AddressForm = ({
                   },
                 }}
               />
+              {districtMessage && <p role="status" className="text-muted">{districtMessage}</p>}
             </div>
           </div>
         </div>
@@ -182,6 +212,7 @@ const AddressForm = ({
                 labelText="Address"
                 register={register}
                 field="addressLine1"
+                error={errors.addressLine1?.message}
                 registerOptions={{
                   required: { value: true, message: 'This feild is required' },
                 }}
@@ -195,6 +226,7 @@ const AddressForm = ({
                 labelText="Zip code"
                 register={register}
                 field="zipCode"
+                error={errors.zipCode?.message}
                 registerOptions={{
                   required: { value: true, message: 'This feild is required' },
                 }}
@@ -209,6 +241,7 @@ const AddressForm = ({
               type="button"
               className="btn btn-outline-primary fw-bold px-2 py-2"
               onClick={handleSubmit}
+              disabled={isSubmitting}
             >
               {buttonText ?? 'Create'}
             </button>

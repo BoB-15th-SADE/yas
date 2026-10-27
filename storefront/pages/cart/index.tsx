@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button } from 'react-bootstrap';
 
 import ConfirmationDialog from '@/common/components/dialog/ConfirmationDialog';
@@ -15,6 +15,7 @@ import { CheckoutItem } from '@/modules/order/models/CheckoutItem';
 import { useCartContext } from '@/context/CartContext';
 import { PromotionVerifyResult } from '@/modules/promotion/model/Promotion';
 import { verifyPromotion } from '@/modules/promotion/service/PromotionService';
+import { couponDiscount } from '@/modules/promotion/service/CouponResult';
 import { CartItemPutVm } from '@/modules/cart/models/CartItemPutVm';
 import CartItem from '@/modules/cart/components/CartItem';
 
@@ -40,6 +41,16 @@ const Cart = () => {
   const [couponCode, setCouponCode] = useState<string>('');
 
   const [promotionApply, setPromotionApply] = useState<PromotionVerifyResult>();
+  const [couponError, setCouponError] = useState('');
+  const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
+  const couponRequest = useRef(0);
+
+  useEffect(() => {
+    ++couponRequest.current;
+    setPromotionApply(undefined);
+    setCouponError('');
+    setIsApplyingCoupon(false);
+  }, [cartItems, selectedProductIds]);
 
   const [discountMoney, setDiscountMoney] = useState<number>(0);
   const [subTotalPrice, setSubTotalPrice] = useState<number>(0);
@@ -62,16 +73,9 @@ const Cart = () => {
 
     setSubTotalPrice(newTotalPrice);
     // Calculate total discount
-    const newDiscountMoney = selectedItems.reduce((total, item) => {
-      const discount =
-        promotionApply?.discountType === 'PERCENTAGE'
-          ? item.price * (promotionApply.discountValue / 100)
-          : promotionApply?.discountValue ?? 0;
-
-      return total + discount;
-    }, 0);
+    const newDiscountMoney = selectedItems.reduce(
+      (total, item) => total + couponDiscount(item, promotionApply), 0);
     setDiscountMoney(newDiscountMoney);
-    console.log('discountMoney: ' + newDiscountMoney);
 
     // Calculate total price
     const totalPriceLast = newTotalPrice - newDiscountMoney;
@@ -203,7 +207,7 @@ const Cart = () => {
     let checkout: Checkout = {
       email: email,
       note: '',
-      couponCode: couponCode,
+      couponCode: promotionApply?.couponCode,
       totalAmount: totalPrice,
       totalDiscountAmount: discountMoney,
       checkoutItemPostVms: checkoutItems,
@@ -223,25 +227,49 @@ const Cart = () => {
       productName: item.productName,
       quantity: item.quantity,
       productPrice: item.price,
-      discountAmount: discountMoney,
+      discountAmount: couponDiscount(item, promotionApply),
     };
   };
 
-  const applyCopounCode = () => {
-    console.log('Total Price:', totalPrice); // Log the totalPrice
-
-    verifyPromotion({
-      couponCode: couponCode,
-      orderPrice: totalPrice,
-      productIds: Array.from(selectedProductIds.values()),
-    }).then((result) => {
-      console.log('Promotion Result:', result); // Log the result
-      setPromotionApply(result);
-    });
+  const applyCopounCode = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (isApplyingCoupon) return;
+    setCouponError('');
+    setPromotionApply(undefined);
+    const selected = getSelectedCartItems();
+    const amount = selected.reduce((sum, item) => sum + item.price * item.quantity, 0);
+    if (!selected.length || amount <= 0) {
+      setCouponError('Select a product before applying a coupon.');
+      return;
+    }
+    if (!couponCode.trim()) {
+      setCouponError('Enter a coupon code.');
+      return;
+    }
+    const request = ++couponRequest.current;
+    setIsApplyingCoupon(true);
+    try {
+      const result = await verifyPromotion({
+        couponCode: couponCode.trim(), orderPrice: amount,
+        productIds: selected.map((item) => item.productId),
+      });
+      if (!selected.some((item) => item.productId === result.productId)) {
+        throw new Error('This coupon does not apply to the selected products.');
+      }
+      if (request === couponRequest.current) setPromotionApply(result);
+    } catch (error) {
+      if (request === couponRequest.current) setCouponError(error instanceof Error
+        ? error.message : 'Unable to verify the coupon. Please try again.');
+    } finally {
+      if (request === couponRequest.current) setIsApplyingCoupon(false);
+    }
   };
 
   const removeCouponCode = () => {
+    ++couponRequest.current;
     setPromotionApply(undefined);
+    setCouponError('');
+    setIsApplyingCoupon(false);
   };
 
   const toastErrorWithDetails = (message: string, error: any) => {
@@ -308,6 +336,7 @@ const Cart = () => {
             </div>
           </div>
         </div>
+        {couponError && <p role="alert" className="text-danger mt-3">{couponError}</p>}
         {promotionApply && (
           <div className="mt-5 mb-5">
             <div className="row">
@@ -350,18 +379,19 @@ const Cart = () => {
           <div className="col-lg-6">
             <div className="discount__content">
               <h6>Discount codes</h6>
-              <form action="#">
+              <form onSubmit={applyCopounCode}>
                 <input
                   type="text"
                   placeholder="Enter your coupon code"
-                  onChange={(e) => setCouponCode(e.target.value)}
+                  value={couponCode}
+                  onChange={(e) => { setCouponCode(e.target.value); removeCouponCode(); }}
                 />
                 <button
                   className="site-btn primary-btn btn btn-primary"
-                  disabled={selectedProductIds.size === 0}
-                  onClick={applyCopounCode}
+                  type="submit"
+                  disabled={selectedProductIds.size === 0 || isApplyingCoupon}
                 >
-                  Apply
+                  {isApplyingCoupon ? 'Checking...' : 'Apply'}
                 </button>
               </form>
             </div>
@@ -384,7 +414,7 @@ const Cart = () => {
               <Button
                 className="primary-btn"
                 onClick={handleCheckout}
-                disabled={selectedProductIds?.size === 0}
+                disabled={selectedProductIds?.size === 0 || isApplyingCoupon}
               >
                 Proceed to checkout
               </Button>

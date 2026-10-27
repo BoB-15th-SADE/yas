@@ -27,8 +27,9 @@ const crumb: BreadcrumbModel[] = [
 const CreateAddress: NextPage = () => {
   const {
     register,
+    setValue,
     handleSubmit,
-    formState: { errors },
+    formState: { errors, isSubmitting },
   } = useForm<Address>();
 
   const router = useRouter();
@@ -54,13 +55,13 @@ const CreateAddress: NextPage = () => {
       stateOrProvinceId: parseInt(stateOrProvinceId),
       countryId: parseInt(countryId),
     };
-    createUserAddress(request)
+    return createUserAddress(request)
       .then(() => {
         toast.success(CREATE_SUCCESSFULLY);
         router.push('/address');
       })
-      .catch((e) => {
-        console.log(e);
+      .catch(() => {
+        toast.error('Unable to create address. Please check your connection and try again.');
       });
   };
 
@@ -72,7 +73,9 @@ const CreateAddress: NextPage = () => {
         register={register}
         errors={errors}
         address={undefined}
-        setValue={() => {}}
+        setValue={setValue}
+        isSubmitting={isSubmitting}
+        buttonText={isSubmitting ? 'Creating...' : 'Create'}
       />
     </ProfileLayout>
   );

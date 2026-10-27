@@ -42,6 +42,8 @@ const SearchPage = () => {
   const [pageNo, setPageNo] = useState<number>(0);
   const [totalPage, setTotalPage] = useState<number>(0);
   const [aggregations, setAggregations] = useState<Aggregations>({});
+  const [loading, setLoading] = useState(true);
+  const [searchFailed, setSearchFailed] = useState(false);
   const isFilter = !!(
     searchParams.brand ??
     searchParams.category ??
@@ -68,24 +70,29 @@ const SearchPage = () => {
   }, [router.isReady, router.query]);
 
   useEffect(() => {
-    if (searchParams.keyword) {
-      fetchSearchResult(searchParams);
-    }
-  }, [searchParams]);
-
-  const fetchSearchResult = (data: SearchParams) => {
-    searchProducts({ ...data, keyword: data.keyword.trim().toLowerCase() })
+    if (!router.isReady) return;
+    let active = true;
+    setLoading(true);
+    setSearchFailed(false);
+    searchProducts({ ...searchParams, keyword: searchParams.keyword.trim() })
       .then((res) => {
+        if (!active) return;
         setProducts(res.products);
         setPageNo(res.pageNo);
         setTotalPage(res.totalPages);
         setTotalElements(res.totalElements);
         setAggregations(res.aggregations);
+        setLoading(false);
       })
       .catch((_error) => {
+        if (!active) return;
+        setLoading(false);
+        setSearchFailed(true);
+        setProducts([]);
         toast.error('Something went wrong, please try again later');
       });
-  };
+    return () => { active = false; };
+  }, [router.isReady, searchParams]);
 
   const crumb: BreadcrumbModel[] = [
     {
@@ -108,10 +115,10 @@ const SearchPage = () => {
               id: product.id,
               name: product.name,
               price: product.price,
-              thumbnailUrl: '',
+              thumbnailUrl: product.thumbnailUrl || '',
               slug: product.slug,
             }}
-            thumbnailId={product.thumbnailId}
+            thumbnailId={product.thumbnailUrl ? undefined : product.thumbnailId}
           />
         </Col>
       ))}
@@ -124,7 +131,13 @@ const SearchPage = () => {
         <BreadcrumbComponent props={crumb} />
 
         <div className={styles['search-wrapper']}>
-          {!isFilter ? (
+          {loading ? <p role="status">Searching products...</p> : searchFailed ? (
+            <div role="alert">
+              <p>Product search is temporarily unavailable.</p>
+              <button type="button" className="btn btn-outline-primary"
+                onClick={() => setSearchParams({ ...searchParams })}>Try again</button>
+            </div>
+          ) : !isFilter ? (
             <>
               {products.length > 0 && (
                 <SearchResultLayout

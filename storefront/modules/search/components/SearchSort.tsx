@@ -1,6 +1,5 @@
 import clsx from 'clsx';
 import { useRouter } from 'next/router';
-import { useEffect, useState } from 'react';
 
 import { SearchParams } from '../models/SearchParams';
 import { ESortType, SortType } from '../models/SortType';
@@ -24,23 +23,20 @@ const SearchSort = ({
   setPageNo,
 }: SearchSortProps) => {
   const router = useRouter();
-  const [sortType, setSortType] = useState<ESortType | undefined>(searchParams.sortType);
+  // Rendering results must not start another search. Update only on a user action.
+  const sortType = searchParams.sortType ?? ESortType.default;
 
-  useEffect(() => {
-    setSearchParams({ ...searchParams, sortType, page: undefined });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sortType]);
-
-  const handleSelectSortType = (sortType: ESortType) => {
-    setSortType(sortType);
+  const handleSelectSortType = (selectedSortType: ESortType) => {
+    if (selectedSortType === sortType) return;
+    setSearchParams({ ...searchParams, sortType: selectedSortType, page: undefined });
     setPageNo(0);
-    router.query.sortType = SortType[sortType];
-    delete router.query.page;
+    const query: typeof router.query = { ...router.query, sortType: SortType[selectedSortType] };
+    delete query.page;
     router
       .replace(
         {
           pathname: router.pathname,
-          query: router.query,
+          query,
         },
         undefined,
         { shallow: true }

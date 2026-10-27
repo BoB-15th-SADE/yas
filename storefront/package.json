@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "test:usability": "node scripts/test-catalog-search.cjs && node scripts/test-coupon.cjs && node scripts/test-search-render.cjs",
     "start": "next start",
     "lint": "next lint",
     "format": "npx prettier --write ."
@@ -37,6 +38,7 @@
     "eslint": "8.18.0",
     "eslint-config-next": "^14.2.14",
     "prettier": "2.7.1",
-    "typescript": "4.7.4"
+    "typescript": "4.7.4",
+    "react-test-renderer": "18.3.1"
   }
 }

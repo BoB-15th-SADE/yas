@@ -4,4 +4,5 @@ export type ProductSearchResult = {
   slug: string;
   thumbnailId: number;
   price: number;
+  thumbnailUrl?: string;
 };
