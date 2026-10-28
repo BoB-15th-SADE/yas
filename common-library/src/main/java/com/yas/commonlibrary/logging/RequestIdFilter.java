@@ -11,8 +11,8 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 /**
  * Copies a valid incoming {@code X-Request-ID} into the MDC key {@code request_id}.
- * A request id is never generated here; the gateway owns it. Also opens the per-request
- * outbound retry counting scope.
+ * A request id is never generated here; the gateway owns it. Also runs for the error dispatch,
+ * so log lines written while the error response is built keep the request id.
  */
 public class RequestIdFilter extends OncePerRequestFilter implements Ordered {
 
@@ -22,7 +22,7 @@ public class RequestIdFilter extends OncePerRequestFilter implements Ordered {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
         try {
-            OutboundRetryCounter.reset();
+            OutboundRetryCounter.clear();
             String requestId = request.getHeader(HEADER);
             if (requestId != null && HttpLogSupport.REQUEST_ID_PATTERN.matcher(requestId).matches()) {
                 MDC.put(HttpLogSupport.MDC_REQUEST_ID, requestId);
@@ -34,6 +34,11 @@ public class RequestIdFilter extends OncePerRequestFilter implements Ordered {
             MDC.remove(HttpLogSupport.MDC_REQUEST_ID);
             OutboundRetryCounter.clear();
         }
+    }
+
+    @Override
+    protected boolean shouldNotFilterErrorDispatch() {
+        return false;
     }
 
     @Override

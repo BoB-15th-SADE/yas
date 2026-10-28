@@ -45,6 +45,12 @@
             <groupId>org.springframework.retry</groupId>
             <artifactId>spring-retry</artifactId>
         </dependency>
+        <!-- Span.current() for trace_id/span_id in the outbound log (version managed by Spring Boot);
+             the OpenTelemetry Java agent bridges this API to its own context at runtime -->
+        <dependency>
+            <groupId>io.opentelemetry</groupId>
+            <artifactId>opentelemetry-api</artifactId>
+        </dependency>
 
         <!--  Kafka Dependencies  -->
         <dependency>

@@ -60,6 +60,7 @@ public class CircuitBreakerOutboundLogger implements SmartInitializingSingleton 
     private void logCircuitOpen(String name) {
         try {
             String[] trace = HttpLogSupport.currentTrace();
+            String callSite = CircuitBreakerCallSite.current();
             String line = new HttpLogSupport.JsonLine()
                 .string("timestamp", HttpLogSupport.timestamp(ZonedDateTime.now()))
                 .string("service", service)
@@ -69,12 +70,12 @@ public class CircuitBreakerOutboundLogger implements SmartInitializingSingleton 
                 .string("request_id", HttpLogSupport.requestId())
                 .string("client_ip", "")
                 .string("method", "")
-                .string("route", "")
+                .string("route", callSite)
                 .string("path", "")
                 .number("status", null)
                 .number("duration_ms", 0L)
                 .string("direction", "OUTBOUND")
-                .string("peer", name)
+                .string("peer", CircuitBreakerCallSite.peer(callSite, name))
                 .string("result", "circuit_open")
                 .number("retry", 0L)
                 .object("req_headers", Map.of())

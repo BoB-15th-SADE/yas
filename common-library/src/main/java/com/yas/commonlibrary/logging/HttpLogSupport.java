@@ -1,6 +1,7 @@
 package com.yas.commonlibrary.logging;
 
-import java.lang.reflect.Method;
+import io.opentelemetry.api.trace.Span;
+import io.opentelemetry.api.trace.SpanContext;
 import java.nio.charset.StandardCharsets;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -40,37 +41,6 @@ final class HttpLogSupport {
     private static final DateTimeFormatter TIMESTAMP_FORMAT =
         DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSXXX", Locale.ROOT);
 
-    private static final Method SPAN_CURRENT;
-    private static final Method SPAN_GET_CONTEXT;
-    private static final Method CONTEXT_IS_VALID;
-    private static final Method CONTEXT_TRACE_ID;
-    private static final Method CONTEXT_SPAN_ID;
-
-    static {
-        Method current = null;
-        Method getContext = null;
-        Method isValid = null;
-        Method traceId = null;
-        Method spanId = null;
-        try {
-            ClassLoader loader = HttpLogSupport.class.getClassLoader();
-            Class<?> spanClass = Class.forName("io.opentelemetry.api.trace.Span", false, loader);
-            Class<?> contextClass = Class.forName("io.opentelemetry.api.trace.SpanContext", false, loader);
-            current = spanClass.getMethod("current");
-            getContext = spanClass.getMethod("getSpanContext");
-            isValid = contextClass.getMethod("isValid");
-            traceId = contextClass.getMethod("getTraceId");
-            spanId = contextClass.getMethod("getSpanId");
-        } catch (Throwable ignored) {
-            current = null;
-        }
-        SPAN_CURRENT = current;
-        SPAN_GET_CONTEXT = getContext;
-        CONTEXT_IS_VALID = isValid;
-        CONTEXT_TRACE_ID = traceId;
-        CONTEXT_SPAN_ID = spanId;
-    }
-
     private HttpLogSupport() {
     }
 
@@ -84,9 +54,10 @@ final class HttpLogSupport {
     }
 
     /**
-     * Returns {traceId, spanId}. The MDC is read first; when the OpenTelemetry Java agent only
-     * decorates log events (and not the MDC itself), the current span from the OpenTelemetry API
-     * is used instead. Missing values are empty strings.
+     * Returns {traceId, spanId} of the current span. With the OpenTelemetry Java agent the API's
+     * {@code Span.current()} is bridged to the agent's context (the agent only decorates log events,
+     * it does not fill {@link MDC}). The MDC is still read first for setups that fill it.
+     * Missing values are empty strings; tracing is optional and never fails logging.
      */
     static String[] currentTrace() {
         String traceId = MDC.get(MDC_TRACE_ID);
@@ -94,19 +65,13 @@ final class HttpLogSupport {
         if (traceId != null && !traceId.isEmpty()) {
             return new String[] {traceId, spanId == null ? "" : spanId};
         }
-        if (SPAN_CURRENT != null) {
-            try {
-                Object span = SPAN_CURRENT.invoke(null);
-                Object context = span == null ? null : SPAN_GET_CONTEXT.invoke(span);
-                if (context != null && Boolean.TRUE.equals(CONTEXT_IS_VALID.invoke(context))) {
-                    return new String[] {
-                        String.valueOf(CONTEXT_TRACE_ID.invoke(context)),
-                        String.valueOf(CONTEXT_SPAN_ID.invoke(context))
-                    };
-                }
-            } catch (Throwable ignored) {
-                // tracing is optional
+        try {
+            SpanContext context = Span.current().getSpanContext();
+            if (context.isValid()) {
+                return new String[] {context.getTraceId(), context.getSpanId()};
             }
+        } catch (Throwable ignored) {
+            // tracing is optional
         }
         return new String[] {"", ""};
     }

@@ -3,8 +3,12 @@ package com.yas.commonlibrary.logging;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.ConnectException;
+import java.net.NoRouteToHostException;
 import java.net.SocketTimeoutException;
 import java.net.URI;
+import java.net.UnknownHostException;
+import java.net.http.HttpConnectTimeoutException;
 import java.net.http.HttpTimeoutException;
 import java.time.ZonedDateTime;
 import java.util.LinkedHashMap;
@@ -52,7 +56,7 @@ public class OutboundHttpLoggingInterceptor implements ClientHttpRequestIntercep
         long startNanos = System.nanoTime();
         int retry = 0;
         try {
-            retry = OutboundRetryCounter.next(request.getMethod().name(), String.valueOf(request.getURI()));
+            retry = OutboundRetryCounter.current();
         } catch (Throwable ignored) {
             // logging must never fail the request
         }
@@ -105,7 +109,7 @@ public class OutboundHttpLoggingInterceptor implements ClientHttpRequestIntercep
     private void logFailure(HttpRequest request, byte[] body, ZonedDateTime start, long startNanos, int retry,
                             Throwable ex) {
         try {
-            String result = isTimeout(ex) ? "timeout" : "conn_error";
+            String result = failureResult(ex);
             String line = buildLine(request, body, start, startNanos, retry, null, result, null, null);
             LOG.info(line);
         } catch (Throwable ignored) {
@@ -113,19 +117,35 @@ public class OutboundHttpLoggingInterceptor implements ClientHttpRequestIntercep
         }
     }
 
-    static boolean isTimeout(Throwable ex) {
+    /**
+     * {@code conn_error}: the peer could not be reached (refused, unknown host, no route, connect timeout).
+     * {@code timeout}: connected, but the answer did not come in time (read timeout).
+     */
+    static String failureResult(Throwable ex) {
+        boolean timeout = false;
         Throwable current = ex;
         int depth = 0;
         while (current != null && depth < 20) {
+            if (current instanceof HttpConnectTimeoutException
+                || current instanceof ConnectException
+                || current instanceof UnknownHostException
+                || current instanceof NoRouteToHostException
+                || (current instanceof SocketTimeoutException && isConnectMessage(current.getMessage()))) {
+                return "conn_error";
+            }
             if (current instanceof SocketTimeoutException
                 || current instanceof HttpTimeoutException
                 || current instanceof TimeoutException) {
-                return true;
+                timeout = true;
             }
             current = current.getCause();
             depth++;
         }
-        return false;
+        return timeout ? "timeout" : "conn_error";
+    }
+
+    private static boolean isConnectMessage(String message) {
+        return message != null && message.toLowerCase(Locale.ROOT).contains("connect");
     }
 
     private String buildLine(HttpRequest request, byte[] requestBody, ZonedDateTime start, long startNanos,

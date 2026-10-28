@@ -76,22 +76,19 @@
         </encoder>
     </appender>
 
+    <!-- 1024 lines: a line can be ~130 KB (two 64 KB bodies), so the queue stays well under the container memory -->
     <appender name="ASYNC_API_FILE" class="ch.qos.logback.classic.AsyncAppender">
-        <queueSize>8192</queueSize>
+        <queueSize>1024</queueSize>
         <discardingThreshold>0</discardingThreshold>
         <neverBlock>true</neverBlock>
         <appender-ref ref="API_FILE"/>
     </appender>
 
-    <!-- Inbound access log of the BFFs: the message already is the complete JSON line -->
-    <appender name="SVC_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+    <!-- Inbound access log of the BFFs: the message already is the complete JSON line.
+         Plain file: the host logrotate rotates everything in svc/ (copytruncate), as for the Tomcat access logs. -->
+    <appender name="SVC_FILE" class="ch.qos.logback.core.FileAppender">
         <file>${logRoot}/svc/${service}.log</file>
-        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-            <fileNamePattern>${logRoot}/svc/${service}.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
-            <maxFileSize>100MB</maxFileSize>
-            <maxHistory>7</maxHistory>
-            <totalSizeCap>1GB</totalSizeCap>
-        </rollingPolicy>
+        <append>true</append>
         <encoder>
             <pattern>%msg%n</pattern>
             <charset>UTF-8</charset>

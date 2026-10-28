@@ -1,35 +1,67 @@
 package com.yas.commonlibrary.logging;
 
-import java.util.HashMap;
-import java.util.Map;
+import io.github.resilience4j.retry.Retry;
+import io.github.resilience4j.retry.RetryRegistry;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.SmartInitializingSingleton;
 
 /**
- * Counts outbound attempts per (method + URI) within the current inbound request thread.
- * The first attempt is 0. Outside an inbound request (no scope opened by {@link RequestIdFilter})
- * every attempt is reported as 0.
+ * The retry number of the outbound call running on this thread: 0 for the first attempt, n for the n-th retry.
+ * The number comes from Resilience4j itself ({@code @Retry}): its retry event is published on the calling thread
+ * right before the next attempt, and the end events reset it. Two different calls to the same URL in one request
+ * therefore stay 0; only real retries count.
  */
-public final class OutboundRetryCounter {
+public final class OutboundRetryCounter implements SmartInitializingSingleton {
 
-    private static final ThreadLocal<Map<String, Integer>> ATTEMPTS = new ThreadLocal<>();
+    private static final ThreadLocal<Integer> ATTEMPT = new ThreadLocal<>();
 
-    private OutboundRetryCounter() {
+    private final ObjectProvider<RetryRegistry> registryProvider;
+    private final Set<String> subscribed = ConcurrentHashMap.newKeySet();
+
+    public OutboundRetryCounter(ObjectProvider<RetryRegistry> registryProvider) {
+        this.registryProvider = registryProvider;
     }
 
-    /** Starts a fresh counting scope for the current thread. */
-    public static void reset() {
-        ATTEMPTS.set(new HashMap<>());
+    /** Retry number for the call about to be sent on this thread. */
+    static int current() {
+        Integer attempt = ATTEMPT.get();
+        return attempt == null ? 0 : attempt;
     }
 
-    /** Ends the counting scope for the current thread. */
+    /** Safety net at the end of an inbound request (thread pools reuse threads). */
     public static void clear() {
-        ATTEMPTS.remove();
+        ATTEMPT.remove();
     }
 
-    static int next(String method, String uri) {
-        Map<String, Integer> attempts = ATTEMPTS.get();
-        if (attempts == null) {
-            return 0;
+    @Override
+    public void afterSingletonsInstantiated() {
+        try {
+            RetryRegistry registry = registryProvider.getIfAvailable();
+            if (registry == null) {
+                return;
+            }
+            registry.getEventPublisher().onEntryAdded(event -> subscribe(event.getAddedEntry()));
+            for (Retry retry : registry.getAllRetries()) {
+                subscribe(retry);
+            }
+        } catch (Throwable ignored) {
+            // logging is optional
         }
-        return attempts.merge(method + " " + uri, 1, Integer::sum) - 1;
+    }
+
+    private void subscribe(Retry retry) {
+        try {
+            if (subscribed.add(retry.getName())) {
+                retry.getEventPublisher()
+                    .onRetry(event -> ATTEMPT.set(event.getNumberOfRetryAttempts()))
+                    .onSuccess(event -> ATTEMPT.remove())
+                    .onError(event -> ATTEMPT.remove())
+                    .onIgnoredError(event -> ATTEMPT.remove());
+            }
+        } catch (Throwable ignored) {
+            // logging is optional
+        }
     }
 }

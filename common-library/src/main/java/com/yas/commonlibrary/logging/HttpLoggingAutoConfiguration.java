@@ -1,6 +1,7 @@
 package com.yas.commonlibrary.logging;
 
 import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
+import io.github.resilience4j.retry.RetryRegistry;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
@@ -34,6 +35,23 @@ public class HttpLoggingAutoConfiguration {
     public RestClientCustomizer outboundHttpLoggingRestClientCustomizer(Environment environment) {
         OutboundHttpLoggingInterceptor interceptor = new OutboundHttpLoggingInterceptor(serviceName(environment));
         return builder -> builder.requestInterceptor(interceptor);
+    }
+
+    /** Retry number of outbound calls, from Resilience4j retry events. */
+    @Bean
+    @ConditionalOnMissingBean
+    @ConditionalOnClass(name = "io.github.resilience4j.retry.RetryRegistry")
+    public OutboundRetryCounter outboundRetryCounter(ObjectProvider<RetryRegistry> registryProvider) {
+        return new OutboundRetryCounter(registryProvider);
+    }
+
+    /** Which @CircuitBreaker method was rejected (route/peer of circuit_open lines). */
+    @Bean
+    @ConditionalOnMissingBean
+    @ConditionalOnClass(name = {"io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker",
+        "org.aspectj.lang.ProceedingJoinPoint"})
+    public CircuitBreakerCallSite circuitBreakerCallSite() {
+        return new CircuitBreakerCallSite();
     }
 
     /** Resilience4j is a dependency of every module (root pom); the registry bean is looked up lazily. */
