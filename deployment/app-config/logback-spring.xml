@@ -1,67 +1,131 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<configuration>
-	<property name="ENCODING" value="UTF-8" />
-	<property name="LOG_LEVEL" value="DEBUG" />
-	<include
-		resource="org/springframework/boot/logging/logback/base.xml" />
-	<springProperty scope="context" name="appName"
-		source="spring.application.name" />
-	<!-- Reuse the log from Spring -->
-	<include
-		resource="org/springframework/boot/logging/logback/defaults.xml" />
-	<include
-		resource="org/springframework/boot/logging/logback/console-appender.xml" />
-	<!-- Define own appender to be used in the logger to append the data into -->
-	<appender name="JSON_APPENDER"
-		class="ch.qos.logback.core.ConsoleAppender">
-		<Target>${user-system}.out</Target>
-		<encoder
-			class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
-			<providers>
-				<mdc />
-				<pattern>
-					<pattern>
-						{
-						"timestamp": "%date{yyyy-MM-dd'T'HH:mm:ss.SSS,UTC}",
-						"log.level": "%level",
-						"thread": "%thread",
-						"logger": "%logger",
-						"message": "%message",
-						"host": "${HOSTNAME}"
-						}
-					</pattern>
-				</pattern>
-				<stackTrace>
-					<throwableConverter
-						class="net.logstash.logback.stacktrace.ShortenedThrowableConverter">
-						<rootCauseFirst>true</rootCauseFirst>
-					</throwableConverter>
-				</stackTrace>
-			</providers>
-		</encoder>
-	</appender>
+<!--
+  Shared logging configuration for every Java service (mounted through LOGGING_CONFIG).
 
-	<appender name="OTEL" class="io.opentelemetry.instrumentation.logback.mdc.v1_0.OpenTelemetryAppender">
-		<captureExperimentalAttributes>true</captureExperimentalAttributes>
-		<captureMdcAttributes>*</captureMdcAttributes>
-		<appender-ref ref="JSON_APPENDER" />
-	</appender>
-	<!-- This appender is to define the log to console that human friendly on 
-		dev machine -->
-	<appender name="CONSOLE"
-		class="ch.qos.logback.core.ConsoleAppender">
-		<Target>${user-system}.out</Target>
-		<encoder>
-			<pattern>${CONSOLE_LOG_PATTERN}</pattern>
-			<charset>${ENCODING}</charset>
-		</encoder>
-	</appender>
-	<!-- Define the logger and the log level to use (TRACE, DEBUG, INFO, WARN, 
-		ERROR, FATAL) -->
-	<logger
-		name="org.springframework.web.filter.CommonsRequestLoggingFilter"
-		level="DEBUG" />
-	<root level="INFO">
-		<appender-ref ref="OTEL" />
-	</root>
+  /var/log/yas/app/<service>.log  application log, one JSON object per line
+  /var/log/yas/api/<service>.log  outbound HTTP calls (logger yas.http.outbound, message is the JSON line)
+  /var/log/yas/svc/<service>.log  inbound access log of the BFFs (logger yas.http.access, message is the JSON line)
+  console                         WARN and above, for `docker logs`
+
+  Field names follow the operations log standard. Logs are written to files only;
+  they are not exported over OTLP (OTEL_LOGS_EXPORTER=none).
+  Rolled files are named <service>.<date>.<index>.log.gz so a "\.log$" input whitelist skips them.
+-->
+<configuration>
+    <springProperty scope="context" name="service" source="spring.application.name" defaultValue="unknown"/>
+    <property name="yasHost" value="${YAS_HOST:-unknown}"/>
+    <property name="logRoot" value="/var/log/yas"/>
+
+    <!-- Application log (JSON) -->
+    <appender name="APP_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${logRoot}/app/${service}.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${logRoot}/app/${service}.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+            <maxFileSize>100MB</maxFileSize>
+            <maxHistory>7</maxHistory>
+            <totalSizeCap>1GB</totalSizeCap>
+        </rollingPolicy>
+        <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
+            <providers>
+                <pattern>
+                    <pattern>
+                        {
+                        "timestamp": "%date{yyyy-MM-dd'T'HH:mm:ss.SSSXXX}",
+                        "service": "${service}",
+                        "host": "${yasHost}",
+                        "level": "%level",
+                        "logger": "%logger",
+                        "thread": "%thread",
+                        "trace_id": "%X{trace_id}",
+                        "span_id": "%X{span_id}",
+                        "request_id": "%X{request_id}",
+                        "message": "%message"
+                        }
+                    </pattern>
+                </pattern>
+                <stackTrace>
+                    <fieldName>stack_trace</fieldName>
+                    <throwableConverter class="net.logstash.logback.stacktrace.ShortenedThrowableConverter">
+                        <maxLength>16384</maxLength>
+                        <rootCauseFirst>true</rootCauseFirst>
+                    </throwableConverter>
+                </stackTrace>
+            </providers>
+        </encoder>
+    </appender>
+
+    <appender name="ASYNC_APP_FILE" class="ch.qos.logback.classic.AsyncAppender">
+        <queueSize>8192</queueSize>
+        <discardingThreshold>0</discardingThreshold>
+        <neverBlock>true</neverBlock>
+        <appender-ref ref="APP_FILE"/>
+    </appender>
+
+    <!-- Outbound HTTP log: the message already is the complete JSON line -->
+    <appender name="API_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${logRoot}/api/${service}.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${logRoot}/api/${service}.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+            <maxFileSize>100MB</maxFileSize>
+            <maxHistory>7</maxHistory>
+            <totalSizeCap>1GB</totalSizeCap>
+        </rollingPolicy>
+        <encoder>
+            <pattern>%msg%n</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <appender name="ASYNC_API_FILE" class="ch.qos.logback.classic.AsyncAppender">
+        <queueSize>8192</queueSize>
+        <discardingThreshold>0</discardingThreshold>
+        <neverBlock>true</neverBlock>
+        <appender-ref ref="API_FILE"/>
+    </appender>
+
+    <!-- Inbound access log of the BFFs: the message already is the complete JSON line -->
+    <appender name="SVC_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${logRoot}/svc/${service}.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${logRoot}/svc/${service}.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+            <maxFileSize>100MB</maxFileSize>
+            <maxHistory>7</maxHistory>
+            <totalSizeCap>1GB</totalSizeCap>
+        </rollingPolicy>
+        <encoder>
+            <pattern>%msg%n</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <appender name="ASYNC_SVC_FILE" class="ch.qos.logback.classic.AsyncAppender">
+        <queueSize>8192</queueSize>
+        <discardingThreshold>0</discardingThreshold>
+        <neverBlock>true</neverBlock>
+        <appender-ref ref="SVC_FILE"/>
+    </appender>
+
+    <!-- Console: WARN and above only -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <level>WARN</level>
+        </filter>
+        <encoder>
+            <pattern>%date{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} %-5level [%thread] %logger{40} [%X{trace_id}] %X{request_id} - %msg%n</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <logger name="yas.http.outbound" level="INFO" additivity="false">
+        <appender-ref ref="ASYNC_API_FILE"/>
+    </logger>
+
+    <logger name="yas.http.access" level="INFO" additivity="false">
+        <appender-ref ref="ASYNC_SVC_FILE"/>
+    </logger>
+
+    <root level="INFO">
+        <appender-ref ref="ASYNC_APP_FILE"/>
+        <appender-ref ref="CONSOLE"/>
+    </root>
 </configuration>

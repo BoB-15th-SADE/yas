@@ -1,4 +1,4 @@
-# Check that the published YAS images the SADE PoC lab runs contain the same code as this branch.
+# Check that the published YAS images the PoC environment runs contain the same code as this branch.
 # For each service: take /app.jar out of the pinned image, build the same service from this branch, and compare
 # their classes, resources and libraries (.github/scripts/compare_jars.py). Run by hand (Actions -> Run workflow).
 # order and payment are compared too: they should differ only where this branch fixed them.

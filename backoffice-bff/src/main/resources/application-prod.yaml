@@ -1,5 +1,11 @@
 server:
   forward-headers-strategy: framework
+  reactive:
+    session:
+      cookie:
+        # Session cookie is only sent over HTTPS (TLS ends at the public entry point).
+        secure: true
+        http-only: true
 
 spring:
   cloud:

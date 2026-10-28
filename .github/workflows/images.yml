@@ -1,11 +1,11 @@
-# Build every YAS service the SADE PoC lab runs and push it to GHCR.
-# Servers only pull and run these images (BoB-15th-SADE/sade-poc-lab pins them by digest).
+# Build every YAS service this branch runs and push it to GHCR.
+# Servers only pull and run these images (the ops repository pins them by digest).
 # order/payment keep their existing repository-owned packages.
 # Other fork builds use yas-poc-<service>, separate from the protected upstream mirror packages.
 # Only services whose folder changed are rebuilt; common-library, pom.xml or this file rebuild all.
-# Tags: sha-<short> for the exact commit and sade-poc for the branch.
+# Tags: sha-<short> for the exact commit and the branch name; OCI labels come from docker/metadata-action.
 # Same build as YAS's own CI (JDK 25 temurin, Maven, the service's Dockerfile) but tests do not gate the image.
-name: sade-poc-images
+name: images
 
 on:
   push:
@@ -30,7 +30,7 @@ on:
       - backoffice-bff/**
       - common-library/**
       - pom.xml
-      - .github/workflows/sade-poc-images.yml
+      - .github/workflows/images.yml
   workflow_dispatch:
 
 permissions:
@@ -64,7 +64,7 @@ jobs:
             all=true
           else
             changed=$(git diff --name-only "$BEFORE" "$SHA")
-            if grep -qE '^(common-library/|pom\.xml$|\.github/workflows/sade-poc-images\.yml$)' <<<"$changed"; then all=true; fi
+            if grep -qE '^(common-library/|pom\.xml$|\.github/workflows/images\.yml$)' <<<"$changed"; then all=true; fi
           fi
           pick() {
             for s in $1; do

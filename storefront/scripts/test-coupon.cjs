@@ -9,7 +9,7 @@ execFileSync(process.execPath, [require.resolve('typescript/bin/tsc'),
   '--outDir', temporary, 'modules/promotion/service/CouponResult.ts'], { stdio: 'inherit' });
 const { couponDiscount, readCouponResult } = require(path.join(temporary, 'modules/promotion/service/CouponResult.js'));
 async function main() {
-  const coupon = { isValid: true, productId: 1, couponCode: 'SADE10', discountType: 'PERCENTAGE', discountValue: 10 };
+  const coupon = { isValid: true, productId: 1, couponCode: 'WELCOME10', discountType: 'PERCENTAGE', discountValue: 10 };
   const target = { productId: 1, price: 799, quantity: 2 };
   const unrelated = { productId: 2, price: 899, quantity: 1 };
   assert.equal(couponDiscount(target, coupon), 159.8, 'percentage uses the target line quantity');
@@ -18,7 +18,7 @@ async function main() {
   assert.equal(couponDiscount(target, { ...coupon, isValid: false }), 0);
   assert.equal(couponDiscount(target, { ...coupon, discountType: 'FIXED', discountValue: 2000 }), 1598, 'cannot exceed the eligible line amount');
   const good = await readCouponResult({ ok: true, status: 200, json: async () => coupon });
-  assert.equal(good.couponCode, 'SADE10');
+  assert.equal(good.couponCode, 'WELCOME10');
   await assert.rejects(readCouponResult({ ok: false, status: 500, json: async () => { throw Error('must not parse an error as a coupon'); } }), /temporarily unavailable/);
   await assert.rejects(readCouponResult({ ok: false, status: 403, json: async () => ({}) }), /sign in/);
   await assert.rejects(readCouponResult({ ok: false, status: 404, json: async () => ({}) }), /cannot be applied/);

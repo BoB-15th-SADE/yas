@@ -69,7 +69,7 @@ class ShopperCouponFlowTest {
         usages.deleteAll();
         promotions.deleteAll();
         fixture.server().reset();
-        var coupon = Promotion.builder().name("Shopper test").slug("shopper-test").couponCode("SADE10")
+        var coupon = Promotion.builder().name("Shopper test").slug("shopper-test").couponCode("WELCOME10")
                 .applyTo(ApplyTo.PRODUCT).usageType(UsageType.UNLIMITED).usageLimit(0)
                 .discountType(DiscountType.PERCENTAGE).discountPercentage(10L).discountAmount(0L)
                 .minimumOrderPurchaseAmount(0L).isActive(true).startDate(Instant.now().minusSeconds(60))
@@ -92,12 +92,12 @@ class ShopperCouponFlowTest {
         mvc.perform(post("/storefront/promotions/verify").with(csrf())
                 .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_CUSTOMER")))
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"couponCode\":\"SADE10\",\"orderPrice\":899,\"productIds\":[1,2]}"))
+                .content("{\"couponCode\":\"WELCOME10\",\"orderPrice\":899,\"productIds\":[1,2]}"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.isValid").value(true))
                 .andExpect(jsonPath("$.productId").value(1))
                 .andExpect(jsonPath("$.discountValue").value(10));
         assertThat(usages.count()).isZero();
-        assertThat(promotions.findByCouponCodeAndIsActiveTrue("SADE10").orElseThrow().getUsageCount()).isZero();
+        assertThat(promotions.findByCouponCodeAndIsActiveTrue("WELCOME10").orElseThrow().getUsageCount()).isZero();
     }
 
     private void expectProduct(long id, int price) {

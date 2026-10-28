@@ -1,12 +1,15 @@
-> **Branch `sade-poc` (BoB-15th-SADE): SADE PoC lab version.**
-> Only the services the lab runs are kept: product, media, customer, cart, rating, order, payment (+ the
-> payment-paypal library it uses), promotion, tax, inventory, location, storefront + storefront-bff,
-> backoffice + backoffice-bff, sampledata, and common-library. Removed: search, recommendation, webhook, delivery,
-> the Kafka / Elasticsearch / observability stacks, Kubernetes and test automation. `openapi/` holds the specs the
-> running services publish. How the lab runs these services: [BoB-15th-SADE/sade-poc-lab](https://github.com/BoB-15th-SADE/sade-poc-lab).
+> **Branch `sade-poc`: the version of YAS our shop runs.**
+> Services kept: product, media, customer, cart, rating, order, payment (+ the payment-paypal library it uses),
+> promotion, tax, inventory, location, storefront + storefront-bff, backoffice + backoffice-bff, sampledata and
+> common-library. Removed: search, recommendation, webhook, delivery, the Kafka / Elasticsearch / observability
+> stacks, Kubernetes and test automation. `openapi/` holds the specs the running services publish.
+> Images: CI (`.github/workflows/images.yml`) builds every service on push and publishes it to GHCR with a
+> `sha-<short>` tag, the branch tag and OCI labels; servers pull the images pinned by digest.
+> Application config shared by all Java services (logging) lives in `deployment/app-config/`.
+> Deployment, infrastructure and log collection live in the ops repository
+> [BoB-15th-SADE/sade-poc-lab](https://github.com/BoB-15th-SADE/sade-poc-lab).
 > One source fix: payment's Liquibase data changesets 0001/0002 inserted into `payment_provider.is_enabled`, which
-> ddl changeset 0004 had already renamed to `enabled`, so payment failed on an empty DB. They now use `enabled`
-> (the lab mounts the same files into the published payment image: sade-poc-lab `host3/payment-liquibase/`).
+> ddl changeset 0004 had already renamed to `enabled`, so payment failed on an empty DB. They now use `enabled`.
 > Upstream: [nashtech-garage/yas](https://github.com/nashtech-garage/yas) (`main` of this fork stays equal to it).
 
 # YAS: Yet Another Shop

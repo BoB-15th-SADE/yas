@@ -26,7 +26,7 @@
   "oauth2DeviceCodeLifespan": 600,
   "oauth2DevicePollingInterval": 5,
   "enabled": true,
-  "sslRequired": "none",
+  "sslRequired": "external",
   "registrationAllowed": true,
   "registrationEmailAsUsername": false,
   "rememberMe": false,
@@ -35,14 +35,14 @@
   "duplicateEmailsAllowed": false,
   "resetPasswordAllowed": false,
   "editUsernameAllowed": false,
-  "bruteForceProtected": false,
+  "bruteForceProtected": true,
   "permanentLockout": false,
   "maxFailureWaitSeconds": 900,
   "minimumQuickLoginWaitSeconds": 60,
   "waitIncrementSeconds": 60,
   "quickLoginCheckMilliSeconds": 1000,
   "maxDeltaTimeSeconds": 43200,
-  "failureFactor": 30,
+  "failureFactor": 5,
   "roles": {
     "realm": [
       {
@@ -418,19 +418,15 @@
       "firstName": "John",
       "lastName": "Doe",
       "email": "admin@gmail.com",
-      "credentials": [
-        {
-          "id": "0bed1acd-4585-450d-9fca-0cd02fb57140",
-          "type": "password",
-          "userLabel": "My password",
-          "createdDate": 1678346530213,
-          "secretData": "{\"value\":\"u6oZH6INLj3cGGIJNxhhVUAhJQhYpFmsr3yLLQyVNqs=\",\"salt\":\"WmnWNNQ1hvyeXj0NlcVugA==\",\"additionalParameters\":{}}",
-          "credentialData": "{\"hashIterations\":27500,\"algorithm\":\"pbkdf2-sha256\",\"additionalParameters\":{}}"
-        }
-      ],
+      "credentials": [],
       "disableableCredentialTypes": [],
-      "requiredActions": [],
-      "realmRoles": ["default-roles-yas", "ADMIN"],
+      "requiredActions": [
+        "UPDATE_PASSWORD"
+      ],
+      "realmRoles": [
+        "default-roles-yas",
+        "ADMIN"
+      ],
       "notBefore": 0,
       "groups": []
     },
@@ -644,13 +640,13 @@
       "enabled": true,
       "alwaysDisplayInConsole": false,
       "clientAuthenticatorType": "client-secret",
-      "secret": "TVacLC0cQ8tiiEKiTVerTb2YvwQ1TRJF",
+      "secret": "${BACKOFFICE_BFF_CLIENT_SECRET}",
       "redirectUris": [
-        "http://backoffice/*",
-        "http://localhost:3000/*",
-        "http://localhost:8087/*"
+        "https://admin.5zzy.shop/login/oauth2/code/api-client"
       ],
-      "webOrigins": [],
+      "webOrigins": [
+        "https://admin.5zzy.shop"
+      ],
       "notBefore": 0,
       "bearerOnly": false,
       "consentRequired": false,
@@ -667,7 +663,7 @@
         "saml.multivalued.roles": "false",
         "saml.force.post.binding": "false",
         "saml.encrypt": "false",
-        "post.logout.redirect.uris": "+",
+        "post.logout.redirect.uris": "https://admin.5zzy.shop",
         "oauth2.device.authorization.grant.enabled": "false",
         "backchannel.logout.revoke.offline.tokens": "false",
         "saml.server.signature": "false",
@@ -764,7 +760,7 @@
       "enabled": true,
       "alwaysDisplayInConsole": false,
       "clientAuthenticatorType": "client-secret",
-      "secret": "NKAr3rnjwm9jlakgKpelukZGFaHYqIWE",
+      "secret": "${CUSTOMER_MANAGEMENT_CLIENT_SECRET}",
       "redirectUris": [
         ""
       ],
@@ -986,12 +982,13 @@
       "enabled": true,
       "alwaysDisplayInConsole": false,
       "clientAuthenticatorType": "client-secret",
-      "secret": "ZrU9I0q2uXBglBnmvyJdkl1lf0ncr8tn",
+      "secret": "${STOREFRONT_BFF_CLIENT_SECRET}",
       "redirectUris": [
-        "http://storefront/*",
-        "http://localhost:8087/*"
+        "https://shop.5zzy.shop/login/oauth2/code/keycloak"
       ],
-      "webOrigins": [],
+      "webOrigins": [
+        "https://shop.5zzy.shop"
+      ],
       "notBefore": 0,
       "bearerOnly": false,
       "consentRequired": false,
@@ -1009,7 +1006,7 @@
         "saml.force.post.binding": "false",
         "saml.multivalued.roles": "false",
         "saml.encrypt": "false",
-        "post.logout.redirect.uris": "+",
+        "post.logout.redirect.uris": "https://shop.5zzy.shop",
         "oauth2.device.authorization.grant.enabled": "false",
         "backchannel.logout.revoke.offline.tokens": "false",
         "saml.server.signature": "false",
@@ -1125,35 +1122,10 @@
       "enabled": true,
       "alwaysDisplayInConsole": false,
       "redirectUris": [
-        "http://localhost:8081/*",
-        "http://localhost:8092/*",
-        "http://localhost:8080/*",
-        "http://localhost:8091/*",
-        "http://localhost:8083/*",
-        "http://localhost:8093/*",
-        "http://api.yas.local/*",
-        "http://localhost:8090/*",
-        "http://localhost:8089/*",
-        "http://localhost:8088/*",
-        "http://localhost:8085/*",
-        "http://localhost:8084/*",
-        "http://localhost:8086/*",
-        "http://localhost:8092/*"
+        "http://api.yas.local/swagger-ui/oauth2-redirect.html"
       ],
       "webOrigins": [
-        "http://api.yas.local",
-        "http://localhost:8088",
-        "http://localhost:8089",
-        "http://localhost:8084",
-        "http://localhost:8083",
-        "http://localhost:8086",
-        "http://localhost:8085",
-        "http://localhost:8080",
-        "http://localhost:8091",
-        "http://localhost:8090",
-        "http://localhost:8093",
-        "http://localhost:8081",
-        "http://localhost:8092"
+        "http://api.yas.local"
       ],
       "notBefore": 0,
       "bearerOnly": false,
